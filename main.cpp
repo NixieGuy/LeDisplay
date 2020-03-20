@@ -650,7 +650,7 @@ boolean fontArray[65][7][5] = {   //Fonts gently made and/or tweaked by @SignalS
 // Twitter logo is 7.
 // Whattsap logo is 8.
 
-boolean weatherArray[10][8][12] = {
+boolean symbolsArray[10][8][12] = {
   {
     {0,0,1,1,0,0,0,0,0,0,0,0},    //0 -> Rainy Cloud 0
     {0,1,0,0,1,0,1,1,1,0,0,0},
@@ -722,14 +722,14 @@ boolean weatherArray[10][8][12] = {
     {1,1,1,1,1,1,1,1,1,1,1,1},
   },
   {
-    {0,0,1,0,0,0,0,0,0,0,0,0},    //7 -> Twitter logo.
-    {0,0,1,1,0,0,0,0,0,0,0,0},
-    {0,0,1,1,1,1,0,0,0,0,0,0},
+    {0,1,0,0,0,0,0,0,0,0,0,0},    //7 -> Twitter logo.
+    {0,1,1,0,0,0,0,0,0,0,0,0},
+    {0,1,1,1,1,0,0,0,0,0,0,0},
+    {0,1,1,1,1,1,0,0,0,0,0,0},
+    {0,1,1,0,0,0,0,0,0,0,0,0},
+    {0,1,1,0,0,0,0,0,0,0,0,0},
+    {0,1,1,1,1,1,1,0,0,0,0,0},
     {0,0,1,1,1,1,1,0,0,0,0,0},
-    {0,0,1,1,0,0,0,0,0,0,0,0},
-    {0,0,1,1,0,0,0,0,0,0,0,0},
-    {0,0,1,1,1,1,1,1,0,0,0,0},
-    {0,0,0,1,1,1,1,1,0,0,0,0},
   },
   {
     {0,0,0,1,1,1,1,0,0,0,0,0},    //8 -> Whattsap Logo.
@@ -826,11 +826,11 @@ boolean numberSmolArray[10][5][3] = {     //Tridimensional array array of 10 uni
   }
 };
 
-int timerCounter = 0;             //Variable for clock - non-timed
-int timerCounterScroll = 0;       //Variable for secondary soft counter.
-int timerCounterScrollLock = 0;   //Variable for scroll Lock.
-int timerCounterTwoStepAnim = 0;  //Variable for two frame animations
-int timerCounterFourStepAnim = 0; //Variable for four frame animations
+int timerCounter = 0;                   //Variable for clock - non-timed
+int timerCounterScroll = 0;             //Variable for secondary soft counter.
+int timerCounterScrollLock = 0;         //Variable for scroll Lock.
+int timerCounterTwoStepAnim = 0;        //Variable for two frame animations
+int timerCounterFourStepAnim = 0;       //Variable for four frame animations
 
 byte changeX = 1;                       //Variable for keeping track of X on mathDisplayDraw(), set to one to ignore padding 0.
 byte changeY = 0;                       //Variable for keeping track of Y on mathDisplayDraw().
@@ -845,20 +845,22 @@ byte data3 = 0;                         //Variable 3 for serial data reception.
 byte data4 = 0;                         //Variable 4 for serial data reception.
 byte padding;                           //Serial end of message.
 byte tweets = 55;                       //variable for number of tweets.
+byte tweets1 = 55;                      //Variable for tens of tweets.
+boolean tweetSwitch = 1;      //Switch for halving the number of messages received (weirdness of Notiduino).
+boolean whattsapsSwitch = 1;  //Switch for halving the number of messages received (weirdness of Notiduino).
+boolean emailsSwitch = 1;     //Switch for halving the number of messages received (weirdness of Notiduino).
 byte whattsaps = 55;                    //Variable for number of whattsaps messages.
 byte emails = 55;                       //Variable for number of emails received.
-boolean timeKeepingSwitch = 0;
-unsigned long time0;
+boolean timeKeepingSwitch = 0;          //Switch for 1Hz RTC time request.
+unsigned long time0;                    //Variables time0 and time1 are used for the dotDraw function to check for 500ms /2Hz switch.
 unsigned long time1 = millis();
-unsigned long timeScroll0;
+unsigned long timeScroll0;              //Variables timeScroll0 and timeScroll1 are used for the proportional scrolling speed calculation.
 unsigned long timeScroll1 = millis();
-int scrollDirection = 0;
+int scrollDirection = 0;                //Variable to check scrolling direction. -1, 0, +1 . 0 stops scrolling.
 
 byte hours;                             //RTC hours time value.
 byte minutes;                           //RTC minutes time value.
-byte focusSpeed = 0;
-byte focusSpeedCounter = 0;
-byte scrollScreenCount;
+byte scrollScreenCount;   //Yet to be used variable for limit amount of screen rotations.
 
 byte iDisplay = 0;                      //Variable to advance the display drawing column once per interrupt, with time inbetween for the amount of intensity.
 
@@ -871,25 +873,24 @@ unsigned long timeRight = 0;            //Variable for the right interrupt senso
 int timeDifferential;
 long differentialTime = 0L;              //storage variable for the actual time difference between the two previous variables.
 
-void displayControl();
-void displayDraw(int fontNumber, int xPos, int yPos);
-void dotDraw(int dotColor, int xPos, int yPos);
-void weatherDraw(int type, int xPos, int mode);     //type defines start of Array, xPos defines placement on display, mode defines number of frames to draw.
-void leftCapacitive();
-void rightCapacitive();
-void scroll();
-void scrollLock();
-void twoStepAnim();
-void fourStepAnim();
-void clockFunction();
+void displayControl();                                //Interrupt driven screen multiplexing.
+void displayDraw(int fontNumber, int xPos, int yPos); //Function to draw 5x8 symbols numbers and letters.
+void dotDraw(int dotColor, int xPos, int yPos);       //Function to draw the clock dots at 2Hz.
+void symbolsDraw(int type, int xPos, int mode);       //type defines start of Array, xPos defines placement on display, mode defines number of frames to draw. Draws 12x8 symbols.
+
+void scroll();            //Function for moving the screen view at a speed proportional to the left and right sensors touch.
+void scrollLock();        //Function to move the screen view 32 leds wide -slots- with soft speed aligning.
+void clockFunction();     //Reads the time from I2C each second and updates the clock display.
 void serialReceived();    //reads the serial buffer whenever 6 bytes have been received.
 void socialUpdate();      //Function for updating all social news, Twitter, Email and Whattsap for now.
-void RTCtimeSet();
-void RTCtimeRead();
-void centerCapacitive();
-void timeKeeping();       //counts 60s and updates the minutes. Maybe check time 
-void RTCtimeTransfer();
-void clockDots();
+void RTCtimeSet();        //Reads the bluetooth buffer and sets the coded time in the RTC memory.
+void RTCtimeRead();       //Requests the time from the RTC and leaves it in the buffer.
+void RTCtimeTransfer();   //Reads I2C buffer each second to have the time.
+void clockDots();         //Draws the clock dots at 2Hz.
+void leftCapacitive();    //Interrupt sensor.
+void centerCapacitive();  //Interrupt sensor.
+void rightCapacitive();   //Interrupt sensor.
+void timeKeeping();       //Interrupt driven boolean flag for timekeeping read.
 
 void setup() {
 
@@ -898,14 +899,13 @@ pinMode(PB1, OUTPUT);
 pinMode(PA2, OUTPUT);
 pinMode(PA1, OUTPUT);
 pinMode(PB5, OUTPUT);
-
 pinMode(PB8, OUTPUT);
 pinMode(PB12, OUTPUT);
 pinMode(PB13, OUTPUT);
 pinMode(PB14, OUTPUT);
 pinMode(PB15, OUTPUT);
 
-pinMode(PC13, OUTPUT);
+//pinMode(PC13, OUTPUT);
 
 digitalWrite(PB0, LOW);     //Make sure their value is LOW.
 digitalWrite(PB1, LOW);
@@ -922,110 +922,88 @@ pinMode(PB9, INPUT);    //Capacitive input 1
 pinMode(PA0, INPUT);    //Capacitive input 2
 pinMode(PA5, INPUT);    //Capacitive input 3, CENTER
 
-//displayDraw(timeFunction[0], 2, 1);   //Writing clock zeroes.
-//displayDraw(timeFunction[1], 8, 1);   //Writing a zero at this place.
-//displayDraw(timeFunction[2], 19, 1);  //Writing a zero at this place.
-//displayDraw(timeFunction[3], 25, 1);  //Writing a zero at this place.
-
-displayDraw(55, 100, 1);
+displayDraw(58, 70, 1);
+displayDraw(59, 80, 1);
+displayDraw(55, 90, 1);
 displayDraw(55, 110, 1);
 displayDraw(55, 120, 1);
-displayDraw(55, 130, 1);
+displayDraw(40, 130, 1);
 displayDraw(55, 140, 1);
 displayDraw(55, 150, 1);
 displayDraw(55, 160, 1);
 displayDraw(55, 170, 1);
-displayDraw(55, 180, 1);
+displayDraw(32, 180, 1);
 displayDraw(55, 190, 1);
 displayDraw(55, 200, 1);
-displayDraw(55, 210, 1);
+displayDraw(15, 210, 1);
 displayDraw(55, 220, 1);
 displayDraw(55, 230, 1);
 displayDraw(55, 240, 1);
 
-//weatherDraw(6, 34, 0);        //drawing an email symbol.
+symbolsDraw(7, 33, 0);        //drawing a twitter symbol.
 //weatherDraw(7, 100, 0);
 //weatherDraw(8, 150, 0);
 
 
 
-Wire.begin();
-Serial.begin(57600);             //Starts I2C serial.
+Wire.begin();                   //Sets up I2C serial.
+Serial.begin(57600);            //Seets I2C speed.
 
 Wire.beginTransmission(0x68);   //RTC adress is 1101000
 Wire.write(0x0E);               //register data for Special Purpose Registers.
 Wire.write(B00000000);          //Sets clock PWM to 1hz, sets alarms OFF, EOSC is already set to 0 (ACTIVE)
-Wire.endTransmission();
+Wire.endTransmission();         //Finishes I2C communication.
 
-RTCtimeRead();      //Performs a first read for the clock function to have something to read.
+RTCtimeRead();                  //Performs a first read for the clock function to have something to read.
 
-Serial1.begin(9600);    //Starts UART serial.
+Serial1.begin(9600);            //Starts UART serial.
 
 HardwareTimer *displayRefresh = new HardwareTimer(Timer1);    //Interrupt for the display drawing at 100Hz.
-displayRefresh->setOverflow(10000);
-displayRefresh->attachInterrupt(0, displayControl);
-displayRefresh->resume();
+displayRefresh->setOverflow(10000);                           //Sets overflow at 10mS.
+displayRefresh->attachInterrupt(0, displayControl);           //Links function to interrupt.
+displayRefresh->resume();                                     //Enables interrupt.
 
 attachInterrupt(digitalPinToInterrupt(PB9), leftCapacitive, RISING);    //Interrupt handling for Capacitive input 1
 attachInterrupt(digitalPinToInterrupt(PA0), rightCapacitive, RISING);   //Interrupt handling for Capacitive input 2
 attachInterrupt(digitalPinToInterrupt(PA5), centerCapacitive, RISING);  //Interrupt handling for Capacitive center input MUST be set to 1hz before start, as it begins on 32Khz
-attachInterrupt(digitalPinToInterrupt(PA6), timeKeeping, RISING);      //Interrupt for the clock PWM, in seconds.
+attachInterrupt(digitalPinToInterrupt(PA6), timeKeeping, RISING);       //Interrupt for the clock PWM, in seconds.
 
 }
 
 void loop() {
   
 clockFunction();        //Clock function, tied to drawing intertupt.
-clockDots();            //clock dots drawing at 2hz.
-scroll();
-//socialUpdate();
+clockDots();            //Clock dots drawing at 2hz.
+scroll();               //
+socialUpdate();
 if(Serial1.available() == 6){serialReceived();}          //gets activated when serial avaliable data is equal to 6    //Performs serial data read on the buffer when all 6 bytes have been received.
 
 }
 
 //----- FUNCTIONS -----//
 
-
-
-
-
 void socialUpdate(){                  //Updates all messaging values, this has to be substituted.
-  displayDraw(emails, 47, 1);
-  displayDraw(tweets, 53, 1);
-  displayDraw(whattsaps, 59, 1);
+  
+  displayDraw(tweets1, 41, 1);
+  displayDraw(tweets, 47, 1);
+
+
+
+  //displayDraw(emails, 47, 1);
+  //displayDraw(whattsaps, 59, 1);
 }
 
 
-
-
-void displayDraw(int fontNumber, int xPos, int yPos){                                   //Font drawing function.
-  int x;                                              //Horizontal number scan variable.
-  int y;                                              //Vertical number scan variable.
-  for (y = 0; y < 7; y++){                            //Scanning is performed vertical first,
-    for (x = 0; x < 5; x++){                          //horizontal second.
-      displayArray[y + yPos][x + xPos] = fontArray[fontNumber][y][x];  //Puts a value from the number array into
-    }                                                                                          //the display array, adjusted for position
-  }                                                                                            //and number to display.
-}
-
-
-
-void weatherDraw(int type, int xPos, int mode){
-  int x;                                              //Horizontal number scan variable.
-  int y;                                              //Vertical number scan variable.
-  for (y = 0; y < 9; y++){                            //Scanning is performed vertical first,
-    for (x = 0; x < 12; x++){                          //horizontal second.
-      displayArray[y][x + xPos] = weatherArray[type + mode][y][x];  //Puts a value from the number array into
-    }                                                                                          //the display array, adjusted for position
-  }
-}
 
 
 
 //---------------------------------- FINISHED FUNCTIONS ----------------------------------//
 
-//Functions beyond here: displayControl(); - scroll(); - clockFunction(); - clockDots(); - dotDraw(); - serialReceived(); -
-//                       RTCtimeSet(); - RTCtimeRead(); - RTCtimeTransfer(); --- INTERRUPTS ---
+//Functions beyond here: displayControl(); - displayDraw8); - symbolsDraw(); - scroll(); - 
+//                       scrollLock(); - clockFunction(); - clockDots(); - dotDraw();
+//                       serialReceived(); - RTCtimeSet(); - RTCtimeRead(); - RTCtimeTransfer();
+//                                                --- INTERRUPTS ---
+//                       leftCapacitive(); - centerCapacitive(); - rightCapacitive(); - timeKeeping();
 
 void displayControl(){                           
 
@@ -1047,9 +1025,9 @@ digitalWrite(PB15, LOW);
 digitalWrite(PB1, HIGH);      //Steps clock in shift registers for next column. Works on rising edge.
 digitalWrite(PB1, LOW);       //Clock pin to 0.
 
-byte scrollD;                  //8 bit variable to roll over and do infinite scrolling
-scrollD = iDisplay + screenFocus;                     //uses screenfocus to displace "window view" along the whole array. it's 255 bits long so it wrapsaround by itself.
-digitalWrite(PB5, displayArray[0][scrollD]);   //Loads value from displayArray[8][256]
+byte scrollD;                                 //8 bit variable to roll over and do infinite scrolling
+scrollD = iDisplay + screenFocus;             //uses screenfocus to displace "window view" along the whole array. it's 255 bits long so it wrapsaround by itself.
+digitalWrite(PB5, displayArray[0][scrollD]);  //Loads value from displayArray[8][256]
 digitalWrite(PA2, displayArray[1][scrollD]);
 digitalWrite(PA1, displayArray[2][scrollD]);
 digitalWrite(PB8, displayArray[3][scrollD]);
@@ -1061,6 +1039,22 @@ digitalWrite(PB15, displayArray[7][scrollD]);
 iDisplay++;
 if(iDisplay > 33){iDisplay = 0;}                     
 
+}
+
+void displayDraw(int fontNumber, int xPos, int yPos){                                         //Font drawing function.
+  int x;                                                                                      //Horizontal number scan variable.
+  int y;                                                                                      //Vertical number scan variable.
+  for (y = 0; y < 7; y++){                                                                    //Scanning is performed vertical first, horizontal second.
+    for (x = 0; x < 5; x++){displayArray[y + yPos][x + xPos] = fontArray[fontNumber][y][x];}  //Puts a value from the number array into the display array, adjusted for position and number to display.
+  }                                                                                            
+}
+
+void symbolsDraw(int type, int xPos, int mode){
+  int x;                                                                                    //Horizontal number scan variable.
+  int y;                                                                                    //Vertical number scan variable.
+  for (y = 0; y < 9; y++){                                                                  //Scanning is performed vertical first, horizontal second.
+    for (x = 0; x < 12; x++){displayArray[y][x + xPos] = symbolsArray[type + mode][y][x];}  //Puts a value from the number array into the display array, adjusted for position.                                       
+  }
 }
 
 void scroll(){      
@@ -1078,19 +1072,18 @@ if(timeScroll0 > timeScroll1 + timeDifferential){                           //Co
 
 void scrollLock(){
 
-byte screenNumber;
+int screenStartPosition;
 int screenCenterPosition;
 int screenEndPosition;
 int screenSection;
 
-screenNumber = screenFocus / 33;
-screenSection = (screenNumber + 1) * 33;
-screenCenterPosition = screenSection - 16;
-screenEndPosition = screenSection - 33;
-
-if((scrollDirection == 0) && (screenFocus > screenEndPosition) && (screenFocus < screenCenterPosition)){screenFocus--;}
-if((scrollDirection == 0) && (screenFocus > screenCenterPosition - 1) && (screenFocus < screenSection)){screenFocus++;}
-
+screenSection = (screenFocus - 1) / 32;               //This gets the block of screen from 0 to 7.
+screenStartPosition = (screenSection * 32) + 1;       //Using the section, we get the numeric value of the screen first position (1 to 32, 33 to 64, 65 to 96 and so on).
+screenCenterPosition = (screenSection * 32) + 16;     //Using the section, we get the numeric value of the screen center position (1 to 32, 33 to 64, 65 to 96 and so on).
+screenEndPosition = (screenSection * 32) + 32;        //Using the section, we get the numeric value of the screen last position (1 to 32, 33 to 64, 65 to 96 and so on).
+if(screenFocus == 1){screenFocus--;}
+if((scrollDirection == 0) && (screenFocus > screenStartPosition) && (screenFocus < screenCenterPosition + 1)){screenFocus--;}  //we compare the initial and center+1 and scroll to initial.
+if((scrollDirection == 0) && (screenFocus >= screenCenterPosition) && (screenFocus < screenEndPosition)){screenFocus++;}       //Compare between center and end position and scroll to end position
 
 }
 
@@ -1135,9 +1128,17 @@ void serialReceived(){                    //USART buffer emptying.
 
   if(padding == 3){                       //Only accepts configs if the padding byte value is 3, representing a correct transmission. I would need to add a NACK answer if data is lost.
     if (dataMode == 84) {                 // "T" identifier for TWITTER, just increases by 1.
+      tweetSwitch = !tweetSwitch;         //Currently only going from 0 to 99 
+      if(tweetSwitch == 0){
       tweets++;
-      if(tweets > 64){tweets = 55;}       //Currently only going from0 to 9
-    }                
+      if(tweets > 64){
+        tweets = 55;
+        tweets1++;
+        if(tweets1 > 64){tweets1 = 55;}
+        }       
+      }
+    }          
+
   if (dataMode == 87) {                   // "W" identifier for WHATTSAPP, just increases by 1.
     whattsaps++;
     if(whattsaps > 64){whattsaps = 55;}   //Currently only going from 0 to 9
